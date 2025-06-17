@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>비밀 일기장</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: #f0f2f5;
+      padding: 2rem;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    input[type="password"], input[type="text"] {
+      width: 100%;
+      padding: 0.8rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 0.8rem;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .note {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .hidden {
+      display: none;
+    }
+    #note-list {
+      margin-top: 1rem;
+    }
+    .note-title {
+      font-weight: bold;
+    }
+    .note-content {
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="login-screen">
+      <h1>비밀 일기장 🔐</h1>
+      <input type="password" id="password" placeholder="비밀번호 입력" />
+      <button onclick="checkPassword()">입장</button>
+    </div>
+
+    <div id="main-screen" class="hidden">
+      <h1>나의 노트들 📒</h1>
+      <input type="text" id="search" placeholder="노트 검색..." oninput="filterNotes()" />
+      <button onclick="goToWritePage()" style="margin-top: 1rem;">+ 새 노트 작성</button>
+      <div id="note-list"></div>
+    </div>
+  </div>
+
+  <script>
+    if (!localStorage.getItem("diaryPassword")) {
+      window.location.href = "setup.html";
+    }
+  
+    async function hashPassword(password) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  
+    async function checkPassword() {
+      const input = document.getElementById("password").value;
+      const hashedInput = await hashPassword(input);
+      const savedHash = localStorage.getItem("diaryPassword");
+  
+      if (hashedInput === savedHash) {
+        document.getElementById("login-screen").classList.add("hidden");
+        document.getElementById("main-screen").classList.remove("hidden");
+        loadNotes();
+      } else {
+        alert("비밀번호가 틀렸습니다!");
+      }
+    }
+  
+    function goToWritePage() {
+      window.location.href = "write.html";
+    }
+  
+    function formatDate(isoString) {
+      const date = new Date(isoString);
+      return date.toLocaleString("ko-KR", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit"
+      });
+    }
+  
+    function loadNotes() {
+      const notes = JSON.parse(localStorage.getItem("diaryNotes") || "[]");
+      const container = document.getElementById("note-list");
+      container.innerHTML = "";
+  
+      notes.forEach(note => {
+        const div = document.createElement("div");
+        div.className = "note";
+        div.id = "note";
+        div.innerHTML = `
+          <div style="display: flex; justify-content: space-between;">
+            <div class="note-title">${note.title}</div>
+            <div style="font-size: 0.85rem; color: #777;">
+              ${note.createdAt ? formatDate(note.createdAt) : ""}
+            </div>
+          </div>
+          <div class="note-content">${note.content}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+  
+    function filterNotes() {
+      const keyword = document.getElementById("search").value.toLowerCase();
+      const notes = document.querySelectorAll(".note");
+      notes.forEach(note => {
+        note.style.display = note.innerText.toLowerCase().includes(keyword) ? "block" : "none";
+      });
+    }
+  </script>
+  
+</body>
+</html>
